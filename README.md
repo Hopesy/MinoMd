@@ -1,75 +1,102 @@
-# React + TypeScript + Vite
+# MinoMd
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+一个现代化的 Markdown 编辑器，支持实时预览和代码高亮。
 
-Currently, two official plugins are available:
+## 功能特性
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- ✨ **实时预览** - 左右分栏，支持同步滚动
+- 🎨 **代码高亮** - Atom One Dark 主题，支持多种语言
+- 📸 **图片处理** - 支持 Ctrl+V 粘贴图片、本地图片上传
+- 📱 **响应式设计** - 适配桌面和移动端
+- ↩️ **撤销/重做** - 完整的历史记录管理（Ctrl+Z / Ctrl+Shift+Z）
+- 📤 **导入/导出** - 支持 Markdown 文件的导入导出
+- 📋 **微信公众号** - 一键复制为微信公众号格式
 
-## React Compiler
+## 技术栈
 
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
+- **React 19.2.0** - UI 框架
+- **TypeScript 5.9.3** - 类型系统
+- **Vite 7.2.4** - 构建工具
+- **Tailwind CSS** - 样式框架
+- **react-markdown** - Markdown 渲染
+- **lucide-react** - 图标库
 
-Note: This will impact Vite dev & build performances.
+## 快速开始
 
-## Expanding the ESLint configuration
+### 安装依赖
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### 开发模式
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run dev
 ```
+
+### 构建生产版本
+
+```bash
+npm run build
+```
+
+### 预览生产构建
+
+```bash
+npm run preview
+```
+
+## 使用说明
+
+### 基础编辑
+
+- 使用工具栏快速插入 Markdown 元素（标题、粗体、斜体、引用等）
+- 支持标准 Markdown 语法
+- 实时预览渲染结果
+
+### 图片功能
+
+1. **粘贴图片**：在编辑器中直接 Ctrl+V 粘贴剪贴板图片
+2. **上传图片**：点击工具栏图片按钮选择本地文件
+
+### 导出功能
+
+- **导出 Markdown**：下载为 .md 文件
+- **复制格式**：复制为微信公众号格式（保留样式）
+
+### 键盘快捷键
+
+- `Ctrl+Z` - 撤销
+- `Ctrl+Shift+Z` 或 `Ctrl+Y` - 重做
+- `Ctrl+V` - 粘贴图片（在编辑器中）
+
+## 代码高亮
+
+支持多种编程语言的语法高亮，采用 Atom One Dark 配色方案：
+
+- Python
+- JavaScript
+- TypeScript
+- 更多语言...
+
+## 项目结构
+
+```
+MinoMd/
+├── src/
+│   ├── App.tsx          # 主应用组件
+│   ├── main.tsx         # 应用入口
+│   └── index.css        # 全局样式（Tailwind）
+├── public/              # 静态资源
+├── index.html           # HTML 模板
+├── vite.config.ts       # Vite 配置
+├── tailwind.config.js   # Tailwind 配置
+├── postcss.config.js    # PostCSS 配置
+└── tsconfig.json        # TypeScript 配置
+```
+
+## 许可证
+
+MIT
+
