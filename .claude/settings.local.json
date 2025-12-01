@@ -5,7 +5,8 @@
       "Bash(npm install:*)",
       "Bash(npx tailwindcss:*)",
       "Bash(del nul)",
-      "Bash(npm run dev:*)"
+      "Bash(npm run dev:*)",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "ask": []

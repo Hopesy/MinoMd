@@ -104,7 +104,7 @@ const AtomColors = {
 const FONT_FAMILY = 'Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace';
 
 // --- 高亮逻辑 ---
-const highlightCode = (code: string, lang: string) => {
+const highlightCode = (code: string, _lang: string) => {
     if (!code) return [];
     const lines = String(code).replace(/\n$/, '').split('\n');
 
@@ -237,7 +237,7 @@ export default function App() {
 
     const [history, setHistory] = useState([DEFAULT_MARKDOWN]);
     const [historyIndex, setHistoryIndex] = useState(0);
-    const historyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const historyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [imageMap, setImageMap] = useState<Record<string, string>>({});
 
     const fileInputRef = useRef<HTMLInputElement>(null); // 用于 Markdown 导入
@@ -554,9 +554,9 @@ export default function App() {
                                     }
                                     return <section style={{ textAlign: 'center', margin: '20px 0' }}><img style={{ maxWidth: '100%', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', border: '1px solid #f0f0f0' }} src={src} alt={props.alt} />{props.alt && props.alt !== 'AI配图' && <span style={{ display: 'block', fontSize: '13px', color: '#999', marginTop: '8px' }}>{props.alt}</span>}</section>;
                                 },
-                                hr: ({ node, ...props }) => <hr style={{ border: 'none', borderTop: '1px solid #e5e7eb', margin: '30px 0' }} />,
-                                pre: CodeBlock,
-                                code: ({ node, inline, className, children, ...props }) => <code style={{ backgroundColor: '#f3f4f6', color: '#c2410c', padding: '2px 6px', borderRadius: '4px', fontSize: '14px', fontFamily: FONT_FAMILY, margin: '0 2px' }} {...props}>{children}</code>,
+                                hr: () => <hr style={{ border: 'none', borderTop: '1px solid #e5e7eb', margin: '30px 0' }} />,
+                                pre: CodeBlock as any,
+                                code: ({ node, className, children, ...props }: any) => <code style={{ backgroundColor: '#f3f4f6', color: '#c2410c', padding: '2px 6px', borderRadius: '4px', fontSize: '14px', fontFamily: FONT_FAMILY, margin: '0 2px' }} {...props}>{children}</code>,
                                 a: ({ node, href, children, ...props }) => {
                                     if (href === '__underline__') return <span style={{ borderBottom: '2px dashed #8DE0B4', paddingBottom: '2px', textDecoration: 'none', color: 'inherit' }}>{children}</span>;
                                     return <a href={href} style={{ color: '#2563eb', textDecoration: 'underline', borderBottom: '1px solid rgba(37, 99, 235, 0.2)' }} target="_blank" rel="noopener noreferrer" {...props}>{children}</a>;
