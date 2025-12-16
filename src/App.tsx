@@ -210,8 +210,8 @@ const highlightCode = (code: string, _lang: string) => {
 
         return (
             <tr key={lineIndex} style={{ border: 'none', backgroundColor: 'transparent' }}>
-                <td style={{ userSelect: 'none', textAlign: 'right', paddingRight: '12px', width: '35px', minWidth: '35px', color: '#636d83', borderRight: '1px solid #3e4451', verticalAlign: 'top', fontFamily: FONT_FAMILY, fontSize: '13px', lineHeight: '1.5', whiteSpace: 'nowrap', backgroundColor: 'transparent' }}>{lineIndex + 1}</td>
-                <td style={{ paddingLeft: '12px', verticalAlign: 'top', color: '#abb2bf', fontFamily: FONT_FAMILY, fontSize: '13px', lineHeight: '1.5', whiteSpace: 'pre', wordBreak: 'normal', backgroundColor: 'transparent' }}>{parts}</td>
+                <td style={{ userSelect: 'none', textAlign: 'right', paddingRight: '8px', width: '1%', color: '#636d83', borderRight: '1px solid #3e4451', verticalAlign: 'top', fontFamily: FONT_FAMILY, fontSize: '13px', lineHeight: '1.5', whiteSpace: 'nowrap', backgroundColor: 'transparent' }}>{lineIndex + 1}</td>
+                <td style={{ paddingLeft: '8px', verticalAlign: 'top', color: '#abb2bf', fontFamily: FONT_FAMILY, fontSize: '13px', lineHeight: '1.5', whiteSpace: 'pre', wordBreak: 'normal', backgroundColor: 'transparent' }}>{parts}</td>
             </tr>
         );
     });
@@ -265,7 +265,7 @@ const CodeBlock = ({ children }: { children: any }) => {
                     <tr>
                         <td style={{ padding: '12px 0', backgroundColor: '#282c34' }}>
                             <div style={{ overflowX: 'auto', width: '100%' }}>
-                                <table width="100%" border={0} cellSpacing="0" cellPadding="0" style={{ margin: 0, tableLayout: 'fixed' }}>
+                                <table width="100%" border={0} cellSpacing="0" cellPadding="0" style={{ margin: 0, tableLayout: 'auto' }}>
                                     <tbody>{highlightCode(codeContent, language)}</tbody>
                                 </table>
                             </div>
@@ -648,7 +648,7 @@ export default function App() {
         // ========== 第二步：获取 HTML 并处理微信兼容性 ==========
         let html = previewElement.innerHTML;
         
-        // 移除微信不支持的 CSS 属性（通用）
+        // 移除微信不支持的 CSS 属性
         html = html.replace(/box-shadow:\s*[^;]+;?/gi, '');
         html = html.replace(/opacity:\s*[^;]+;?/gi, '');
         html = html.replace(/overflow:\s*hidden;?/gi, '');
@@ -665,25 +665,19 @@ export default function App() {
         // display: flex 转 display: block
         html = html.replace(/display:\s*flex;?/gi, 'display: block;');
         
-        // 代码块特定处理
-        // 移除代码块行号列的固定宽度
-        html = html.replace(/width:\s*35px;/gi, '');
-        html = html.replace(/min-width:\s*35px;/gi, '');
-        // 移除代码块行号右边框
-        html = html.replace(/border-right:\s*1px solid #3e4451;?/gi, '');
-        // 调整代码块内边距
-        html = html.replace(/padding-right:\s*12px;/gi, 'padding-right: 8px;');
-        html = html.replace(/padding-left:\s*12px;/gi, 'padding-left: 8px;');
-        // 代码块表格布局
-        html = html.replace(/border-collapse:\s*separate;?/gi, 'border-collapse: collapse;');
-        html = html.replace(/border-spacing:\s*[^;]+;?/gi, '');
-        html = html.replace(/table-layout:\s*fixed;?/gi, 'table-layout: auto;');
-        // 移除代码块中的 nowrap
-        html = html.replace(/white-space:\s*nowrap;?/gi, '');
+        // 给 table/tr 添加 border:none 防止微信自动加边框
+        html = html.replace(/<table([^>]*)style="([^"]*)"/gi, '<table$1style="$2 border:none;"');
+        html = html.replace(/<table(?![^>]*style=)([^>]*)>/gi, '<table style="border:none;"$1>');
+        html = html.replace(/<tr([^>]*)style="([^"]*)"/gi, '<tr$1style="$2 border:none;"');
+        html = html.replace(/<tr(?![^>]*style=)([^>]*)>/gi, '<tr style="border:none;"$1>');
+        // td: 保留行号列的右边框，只给其他边添加 none
+        html = html.replace(/<td([^>]*)style="([^"]*)"/gi, '<td$1style="$2 border-top:none; border-bottom:none; border-left:none;"');
+        html = html.replace(/<td(?![^>]*style=)([^>]*)>/gi, '<td style="border:none;"$1>');
         
-        // 移除代码块内部表格的所有边框（代码块内的 tr/td 不需要边框）
-        // 代码块的 tr 有 border: none 标记
-        html = html.replace(/border:\s*none;/gi, 'border: none;');
+        // 代码块：调整表头和代码行的紧凑度
+        html = html.replace(/padding:\s*8px 12px;?/gi, 'padding: 4px 12px;');  // 表头 padding
+        html = html.replace(/padding:\s*12px 0;?/gi, 'padding: 6px 0;');       // 代码区 padding
+        html = html.replace(/line-height:\s*1\.5;?/gi, 'line-height: 1.3;');   // 行高
         
         // 清理空 style 和多余分号
         html = html.replace(/style="\s*"/gi, '');
@@ -691,12 +685,14 @@ export default function App() {
 
         // ========== 第三步：恢复原始 DOM ==========
         const restoreDOM = () => {
+            // 恢复公式
             for (let i = katexReplacements.length - 1; i >= 0; i--) {
                 const { katex, img, parent } = katexReplacements[i];
                 if (img.parentNode === parent) {
                     parent.replaceChild(katex, img);
                 }
             }
+            // 恢复流程图
             for (let i = svgReplacements.length - 1; i >= 0; i--) {
                 const { svg, img, parent } = svgReplacements[i];
                 if (img.parentNode === parent) {
