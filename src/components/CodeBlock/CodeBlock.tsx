@@ -74,8 +74,13 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({ children }) => {
           </tr>
           <tr>
             <td style={{ padding: '12px 0', backgroundColor: '#282c34' }}>
-              <div style={{ overflowX: 'auto', width: '100%' }}>
-                <table width="100%" border={0} cellSpacing="0" cellPadding="0" style={{ margin: 0, tableLayout: 'auto' }}>
+              <div style={{
+                overflowX: 'auto',
+                width: '100%',
+                WebkitOverflowScrolling: 'touch',
+                maxWidth: '100%'
+              }}>
+                <table width="100%" border={0} cellSpacing="0" cellPadding="0" style={{ margin: 0, tableLayout: 'auto', minWidth: '100%' }}>
                   <tbody>{highlightCode(codeContent, language)}</tbody>
                 </table>
               </div>
