@@ -1,5 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
+import mermaid from 'mermaid';
+import html2canvas from 'html2canvas';
 import {
     Bold,
     Italic,
@@ -40,17 +46,36 @@ const DEFAULT_MARKDOWN = `# AI 发展趋势分析笔记
 
 > **模型参数力总量，每 3.5 个月翻倍**
 
-#### 这是一个四级标题示例
-它现在的样式和三级标题完全一样（左侧竖条 + 下滑虚线）。
+### 数学公式示例
 
-### 重点标记示例
+行内公式：能量公式 $E = mc^2$，质能方程。
 
-我们需要特别关注以下数据：
-<u>算力成本每 2.6 个月腰斩</u>，这意味着<u>个人开发者</u>的时代即将来临。
+块级公式：
+
+$$
+\\frac{\\partial f}{\\partial x} = \\lim_{h \\to 0} \\frac{f(x+h) - f(x)}{h}
+$$
+
+### 表格示例
+
+| 模型名称 | 参数量 | 性能得分 |
+|---------|-------|---------|
+| GPT-4 | 1.8T | 95.2 |
+| Claude | 175B | 92.8 |
+| Llama | 70B | 88.5 |
+
+### 流程图示例
+
+\`\`\`mermaid
+graph TD
+    A[开始] --> B{判断条件}
+    B -->|是| C[执行操作A]
+    B -->|否| D[执行操作B]
+    C --> E[结束]
+    D --> E
+\`\`\`
 
 ### 代码实现示例
-
-以下是计算参数密度的 Python 脚本，展示 **Mac + Atom** 风格渲染：
 
 \`\`\`python
 # 计算模型密度的函数
@@ -64,28 +89,6 @@ def calculate_density(params, performance):
     density = performance / params
     print(f"Model Density: {density}")
     return density
-
-# 主程序入口
-current_params = 70000000000  # 70B
-growth_rate = 2.4             # 指数增长率
-
-final_density = calculate_density(current_params, growth_rate)
-\`\`\`
-
-前端 React 组件示例：
-
-\`\`\`javascript
-import React from 'react';
-
-const AIModel = ({ name, params }) => {
-  // 渲染模型信息卡片
-  return (
-    <div className="card">
-      <h1>{name}</h1>
-      <p>Params: {params}B</p>
-    </div>
-  );
-};
 \`\`\`
 `;
 
@@ -102,6 +105,51 @@ const AtomColors = {
 };
 
 const FONT_FAMILY = 'Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace';
+
+// --- 初始化 Mermaid ---
+mermaid.initialize({
+    startOnLoad: false,
+    theme: 'neutral',
+    securityLevel: 'loose',
+});
+
+// --- Mermaid 组件 ---
+const MermaidBlock = ({ code }: { code: string }) => {
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [svg, setSvg] = useState<string>('');
+
+    useEffect(() => {
+        const renderDiagram = async () => {
+            if (!code) return;
+            try {
+                const id = `mermaid-${Date.now()}`;
+                const { svg } = await mermaid.render(id, code);
+                setSvg(svg);
+            } catch (err) {
+                console.error('Mermaid render error:', err);
+                setSvg(`<pre style="color: red;">流程图渲染错误</pre>`);
+            }
+        };
+        renderDiagram();
+    }, [code]);
+
+    return (
+        <section style={{ margin: '20px 0', textAlign: 'center' }}>
+            <div 
+                ref={containerRef}
+                data-mermaid="true"
+                dangerouslySetInnerHTML={{ __html: svg }}
+                style={{ 
+                    display: 'inline-block',
+                    backgroundColor: '#ffffff',
+                    padding: '20px',
+                    borderRadius: '8px',
+                    border: '1px solid #e5e7eb'
+                }}
+            />
+        </section>
+    );
+};
 
 // --- 高亮逻辑 ---
 const highlightCode = (code: string, _lang: string) => {
@@ -375,93 +423,290 @@ export default function App() {
         e.target.value = ''; // 重置 input
     };
 
+    // SVG 转 Base64 图片（用于流程图）
+    const svgToBase64Image = async (svgElement: SVGElement): Promise<{ base64: string; width: number; height: number }> => {
+        return new Promise((resolve) => {
+            const rect = svgElement.getBoundingClientRect();
+            const width = rect.width || 400;
+            const height = rect.height || 300;
+            
+            const clonedSvg = svgElement.cloneNode(true) as SVGElement;
+            clonedSvg.setAttribute('width', String(width));
+            clonedSvg.setAttribute('height', String(height));
+            
+            const svgData = new XMLSerializer().serializeToString(clonedSvg);
+            const svgBase64 = btoa(unescape(encodeURIComponent(svgData)));
+            const dataUrl = `data:image/svg+xml;base64,${svgBase64}`;
+            
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                // 不使用 scale，保持原始尺寸
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                if (ctx) {
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, width, height);
+                    ctx.drawImage(img, 0, 0, width, height);
+                }
+                resolve({ base64: canvas.toDataURL('image/png'), width, height });
+            };
+            img.onerror = () => {
+                resolve({ base64: '', width: 0, height: 0 });
+            };
+            img.src = dataUrl;
+        });
+    };
+
+    // 裁剪 canvas 空白区域
+    const trimCanvas = (canvas: HTMLCanvasElement, padding: number): HTMLCanvasElement => {
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return canvas;
+        
+        const { width, height } = canvas;
+        const imageData = ctx.getImageData(0, 0, width, height);
+        const { data } = imageData;
+        
+        let top = 0, bottom = height - 1, left = 0, right = width - 1;
+        
+        // 找顶部边界
+        findTop: for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const idx = (y * width + x) * 4;
+                if (data[idx] < 250 || data[idx + 1] < 250 || data[idx + 2] < 250) {
+                    top = y;
+                    break findTop;
+                }
+            }
+        }
+        
+        // 找底部边界
+        findBottom: for (let y = height - 1; y >= 0; y--) {
+            for (let x = 0; x < width; x++) {
+                const idx = (y * width + x) * 4;
+                if (data[idx] < 250 || data[idx + 1] < 250 || data[idx + 2] < 250) {
+                    bottom = y;
+                    break findBottom;
+                }
+            }
+        }
+        
+        // 找左边界
+        findLeft: for (let x = 0; x < width; x++) {
+            for (let y = 0; y < height; y++) {
+                const idx = (y * width + x) * 4;
+                if (data[idx] < 250 || data[idx + 1] < 250 || data[idx + 2] < 250) {
+                    left = x;
+                    break findLeft;
+                }
+            }
+        }
+        
+        // 找右边界
+        findRight: for (let x = width - 1; x >= 0; x--) {
+            for (let y = 0; y < height; y++) {
+                const idx = (y * width + x) * 4;
+                if (data[idx] < 250 || data[idx + 1] < 250 || data[idx + 2] < 250) {
+                    right = x;
+                    break findRight;
+                }
+            }
+        }
+        
+        // 添加 padding
+        top = Math.max(0, top - padding);
+        bottom = Math.min(height - 1, bottom + padding);
+        left = Math.max(0, left - padding);
+        right = Math.min(width - 1, right + padding);
+        
+        const croppedWidth = right - left + 1;
+        const croppedHeight = bottom - top + 1;
+        
+        const croppedCanvas = document.createElement('canvas');
+        croppedCanvas.width = croppedWidth;
+        croppedCanvas.height = croppedHeight;
+        const croppedCtx = croppedCanvas.getContext('2d');
+        if (croppedCtx) {
+            croppedCtx.fillStyle = '#ffffff';
+            croppedCtx.fillRect(0, 0, croppedWidth, croppedHeight);
+            croppedCtx.drawImage(canvas, left, top, croppedWidth, croppedHeight, 0, 0, croppedWidth, croppedHeight);
+        }
+        
+        return croppedCanvas;
+    };
+
+    // 公式转 Base64 图片（通用函数）
+    const formulaToBase64 = async (element: HTMLElement, isBlock: boolean): Promise<{ base64: string; width: number; height: number }> => {
+        try {
+            const scale = 2;
+            
+            // 克隆元素到临时容器
+            const container = document.createElement('div');
+            container.style.position = 'absolute';
+            container.style.left = '-9999px';
+            container.style.top = '0';
+            container.style.backgroundColor = '#ffffff';
+            container.style.padding = '20px'; // 足够大的 padding 确保内容完整
+            container.style.display = 'inline-block';
+            container.style.whiteSpace = 'nowrap';
+            
+            const clone = element.cloneNode(true) as HTMLElement;
+            container.appendChild(clone);
+            document.body.appendChild(container);
+            
+            // 等待渲染
+            await new Promise(resolve => setTimeout(resolve, 50));
+            
+            const canvas = await html2canvas(container, {
+                backgroundColor: '#ffffff',
+                scale: scale,
+                logging: false,
+                useCORS: true,
+            });
+            
+            document.body.removeChild(container);
+            
+            // 裁剪空白，块级公式保留更多 padding
+            const padding = isBlock ? 8 : 4;
+            const trimmedCanvas = trimCanvas(canvas, padding * scale);
+            
+            return { 
+                base64: trimmedCanvas.toDataURL('image/png'), 
+                width: trimmedCanvas.width / scale, 
+                height: trimmedCanvas.height / scale 
+            };
+        } catch {
+            return { base64: '', width: 0, height: 0 };
+        }
+    };
+
     const copyForWeChat = async () => {
         const previewElement = document.getElementById('preview-content-wechat');
         if (!previewElement) return;
 
-        // 获取 HTML 并转换为微信兼容格式
+        // ========== 第一步：处理公式和流程图，转成图片 ==========
+        const svgReplacements: { svg: Element; img: HTMLImageElement; parent: Node }[] = [];
+        const katexReplacements: { katex: Element; img: HTMLImageElement; parent: Node }[] = [];
+        
+        // 1. Mermaid 流程图 SVG 转图片（只选择 Mermaid 容器内的 SVG，排除图标）
+        const mermaidContainers = previewElement.querySelectorAll('[data-mermaid]');
+        for (const container of Array.from(mermaidContainers)) {
+            const svg = container.querySelector('svg');
+            if (svg) {
+                const result = await svgToBase64Image(svg as SVGElement);
+                if (result.base64 && svg.parentNode) {
+                    const img = document.createElement('img');
+                    img.src = result.base64;
+                    img.style.width = `${result.width}px`;
+                    img.style.height = `${result.height}px`;
+                    img.style.maxWidth = '100%';
+                    img.style.display = 'block';
+                    img.style.margin = '0 auto';
+                    svgReplacements.push({ svg, img, parent: svg.parentNode });
+                    svg.parentNode.replaceChild(img, svg);
+                }
+            }
+        }
+        
+        // 2. 块级公式转图片
+        const katexDisplays = previewElement.querySelectorAll('.katex-display');
+        for (const display of Array.from(katexDisplays)) {
+            const el = display as HTMLElement;
+            const result = await formulaToBase64(el, true);
+            if (result.base64 && display.parentNode) {
+                const img = document.createElement('img');
+                img.src = result.base64;
+                img.style.width = `${result.width}px`;
+                img.style.height = `${result.height}px`;
+                img.style.maxWidth = '100%';
+                img.style.display = 'block';
+                img.style.margin = '16px auto';
+                katexReplacements.push({ katex: display, img, parent: display.parentNode });
+                display.parentNode.replaceChild(img, display);
+            }
+        }
+        
+        // 3. 行内公式转图片（排除已处理的块级公式内的）
+        const inlineKatex = previewElement.querySelectorAll('.katex:not(.katex-display .katex)');
+        for (const katex of Array.from(inlineKatex)) {
+            if (!katex.parentNode) continue;
+            const el = katex as HTMLElement;
+            const result = await formulaToBase64(el, false);
+            if (result.base64 && katex.parentNode) {
+                const img = document.createElement('img');
+                img.src = result.base64;
+                img.style.display = 'inline';
+                img.style.verticalAlign = 'middle';
+                img.style.width = `${result.width}px`;
+                img.style.height = `${result.height}px`;
+                katexReplacements.push({ katex, img, parent: katex.parentNode });
+                katex.parentNode.replaceChild(img, katex);
+            }
+        }
+
+        // ========== 第二步：获取 HTML 并处理微信兼容性 ==========
         let html = previewElement.innerHTML;
         
-        // 1. 移除 box-shadow
+        // 移除微信不支持的 CSS 属性（通用）
         html = html.replace(/box-shadow:\s*[^;]+;?/gi, '');
-        
-        // 2. 移除 opacity
         html = html.replace(/opacity:\s*[^;]+;?/gi, '');
+        html = html.replace(/overflow:\s*hidden;?/gi, '');
+        html = html.replace(/text-transform:\s*[^;]+;?/gi, '');
+        html = html.replace(/user-select:\s*[^;]+;?/gi, '');
+        html = html.replace(/-webkit-user-select:\s*[^;]+;?/gi, '');
+        html = html.replace(/cursor:\s*[^;]+;?/gi, '');
         
-        // 3. display: flex 转换
-        html = html.replace(/display:\s*flex;?/gi, 'display: block;');
-        
-        // 4. rgba 转换为 hex
+        // rgba 转 hex
         html = html.replace(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)/gi, (_, r, g, b) => {
             return '#' + [r, g, b].map(x => parseInt(x).toString(16).padStart(2, '0')).join('');
         });
         
-        // 5. 移除 overflow: hidden
-        html = html.replace(/overflow:\s*hidden;?/gi, '');
+        // display: flex 转 display: block
+        html = html.replace(/display:\s*flex;?/gi, 'display: block;');
         
-        // 6. 移除 text-transform
-        html = html.replace(/text-transform:\s*[^;]+;?/gi, '');
-        
-        // 7. 移除不支持的属性
-        html = html.replace(/user-select:\s*[^;]+;?/gi, '');
-        html = html.replace(/-webkit-user-select:\s*[^;]+;?/gi, '');
-        html = html.replace(/min-width:\s*[^;]+;?/gi, '');
-        html = html.replace(/word-break:\s*[^;]+;?/gi, '');
-        
-        // 8. border-collapse: separate 改为 collapse
+        // 代码块特定处理
+        // 移除代码块行号列的固定宽度
+        html = html.replace(/width:\s*35px;/gi, '');
+        html = html.replace(/min-width:\s*35px;/gi, '');
+        // 移除代码块行号右边框
+        html = html.replace(/border-right:\s*1px solid #3e4451;?/gi, '');
+        // 调整代码块内边距
+        html = html.replace(/padding-right:\s*12px;/gi, 'padding-right: 8px;');
+        html = html.replace(/padding-left:\s*12px;/gi, 'padding-left: 8px;');
+        // 代码块表格布局
         html = html.replace(/border-collapse:\s*separate;?/gi, 'border-collapse: collapse;');
-        
-        // 9. 移除 border-spacing
         html = html.replace(/border-spacing:\s*[^;]+;?/gi, '');
-        
-        // 10. 移除 table-layout: fixed
-        html = html.replace(/table-layout:\s*fixed;?/gi, '');
-        
-        // 11. 移除 cursor
-        html = html.replace(/cursor:\s*[^;]+;?/gi, '');
-        
-        // 12. 移除 white-space: nowrap (保留 pre)
+        html = html.replace(/table-layout:\s*fixed;?/gi, 'table-layout: auto;');
+        // 移除代码块中的 nowrap
         html = html.replace(/white-space:\s*nowrap;?/gi, '');
         
-        // 13. 代码块表格：移除边框，设置宽度自适应
-        html = html.replace(/<table([^>]*)>/gi, (match, attrs) => {
-            if (attrs.includes('style="')) {
-                return match.replace(/style="/, 'style="border: none; width: auto; table-layout: auto; ');
-            }
-            return `<table${attrs} style="border: none; width: auto; table-layout: auto;">`;
-        });
+        // 移除代码块内部表格的所有边框（代码块内的 tr/td 不需要边框）
+        // 代码块的 tr 有 border: none 标记
+        html = html.replace(/border:\s*none;/gi, 'border: none;');
         
-        // 给 tr 添加 border: none
-        html = html.replace(/<tr([^>]*)>/gi, (match, attrs) => {
-            if (attrs.includes('style="')) {
-                return match.replace(/style="/, 'style="border: none; ');
-            }
-            return `<tr${attrs} style="border: none;">`;
-        });
-        
-        // 给 td 添加 border: none，行号列最小宽度，代码列自动宽度
-        html = html.replace(/<td([^>]*)>/gi, (_, attrs) => {
-            let newAttrs = attrs;
-            // 移除固定宽度
-            newAttrs = newAttrs.replace(/width:\s*35px;?/gi, '');
-            newAttrs = newAttrs.replace(/min-width:\s*35px;?/gi, '');
-            // 减少 padding
-            newAttrs = newAttrs.replace(/padding-right:\s*12px/gi, 'padding-right: 8px');
-            newAttrs = newAttrs.replace(/padding-left:\s*12px/gi, 'padding-left: 8px');
-            
-            if (newAttrs.includes('style="')) {
-                return `<td${newAttrs}>`.replace(/style="/, 'style="border: none; ');
-            }
-            return `<td${newAttrs} style="border: none;">`;
-        });
-        
-        // 14. 清理多余的空样式
+        // 清理空 style 和多余分号
         html = html.replace(/style="\s*"/gi, '');
         html = html.replace(/;\s*;/g, ';');
-        html = html.replace(/:\s*;/g, ': ;');
-        
+
+        // ========== 第三步：恢复原始 DOM ==========
+        const restoreDOM = () => {
+            for (let i = katexReplacements.length - 1; i >= 0; i--) {
+                const { katex, img, parent } = katexReplacements[i];
+                if (img.parentNode === parent) {
+                    parent.replaceChild(katex, img);
+                }
+            }
+            for (let i = svgReplacements.length - 1; i >= 0; i--) {
+                const { svg, img, parent } = svgReplacements[i];
+                if (img.parentNode === parent) {
+                    parent.replaceChild(svg, img);
+                }
+            }
+        };
+
+        // ========== 第四步：复制到剪贴板 ==========
         try {
-            // 使用 Clipboard API 写入 HTML
             await navigator.clipboard.write([
                 new ClipboardItem({
                     'text/html': new Blob([html], { type: 'text/html' }),
@@ -470,7 +715,6 @@ export default function App() {
             ]);
             setCopyStatus('success');
         } catch (err) {
-            // 降级方案：使用传统方式
             console.error('Clipboard API failed, falling back:', err);
             const selection = window.getSelection();
             const range = document.createRange();
@@ -486,6 +730,9 @@ export default function App() {
             }
             selection?.removeAllRanges();
         }
+        
+        // 恢复原始 DOM
+        restoreDOM();
         
         setTimeout(() => setCopyStatus('idle'), 2000);
     };
@@ -628,7 +875,11 @@ export default function App() {
                     <div className="min-h-full relative">
                         <div className="absolute inset-0 pointer-events-none z-0 opacity-40" style={{ backgroundImage: `linear-gradient(to right, #e5e7eb 1px, transparent 1px), linear-gradient(to bottom, #e5e7eb 1px, transparent 1px)`, backgroundSize: '24px 24px' }} />
                         <div id="preview-content-wechat" className="relative z-10 max-w-3xl mx-auto p-8 md:p-12 min-h-full" style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-                            <ReactMarkdown urlTransform={(value) => value} components={{
+                            <ReactMarkdown 
+                                urlTransform={(value) => value} 
+                                remarkPlugins={[remarkGfm, remarkMath]}
+                                rehypePlugins={[rehypeKatex]}
+                                components={{
                                 h1: ({ node, ...props }) => <section style={{ textAlign: 'center', marginTop: '40px', marginBottom: '20px' }}><span style={{ display: 'inline-block', backgroundColor: '#C66E49', color: '#ffffff', padding: '10px 24px', borderRadius: '8px', fontSize: '20px', fontWeight: 'bold', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>{props.children}</span></section>,
                                 h2: ({ node, ...props }) => <section style={{ textAlign: 'center', marginTop: '30px', marginBottom: '20px' }}><span style={{ display: 'inline-block', backgroundColor: '#C66E49', color: '#ffffff', padding: '8px 20px', borderRadius: '6px', fontSize: '17px', fontWeight: 'bold', opacity: 0.9 }}>{props.children}</span></section>,
                                 h3: ({ node, ...props }) => <section style={{ marginTop: '30px', marginBottom: '15px', display: 'flex', alignItems: 'center', borderBottom: '1px dashed #C66E49', paddingBottom: '10px' }}><span style={{ display: 'inline-block', width: '4px', height: '20px', backgroundColor: '#ea580c', marginRight: '10px', borderRadius: '4px' }} /><span style={{ fontSize: '18px', fontWeight: 'bold', color: '#1f2937' }}>{props.children}</span></section>,
@@ -648,8 +899,34 @@ export default function App() {
                                     return <section style={{ textAlign: 'center', margin: '20px 0' }}><img style={{ maxWidth: '100%', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', border: '1px solid #f0f0f0' }} src={src} alt={props.alt} />{props.alt && props.alt !== 'AI配图' && <span style={{ display: 'block', fontSize: '13px', color: '#999', marginTop: '8px' }}>{props.alt}</span>}</section>;
                                 },
                                 hr: () => <hr style={{ border: 'none', borderTop: '1px solid #e5e7eb', margin: '30px 0' }} />,
-                                pre: CodeBlock as any,
-                                code: ({ node, className, children, ...props }: any) => <code style={{ backgroundColor: '#f3f4f6', color: '#c2410c', padding: '2px 6px', borderRadius: '4px', fontSize: '14px', fontFamily: FONT_FAMILY, margin: '0 2px' }} {...props}>{children}</code>,
+                                // 表格样式
+                                table: ({ node, ...props }) => (
+                                    <section style={{ margin: '20px 0' }}>
+                                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px', border: '1px solid #e5e7eb' }}>{props.children}</table>
+                                    </section>
+                                ),
+                                thead: ({ node, ...props }) => <thead>{props.children}</thead>,
+                                tbody: ({ node, ...props }) => <tbody>{props.children}</tbody>,
+                                tr: ({ node, ...props }) => <tr style={{ borderBottom: '1px solid #e5e7eb' }}>{props.children}</tr>,
+                                th: ({ node, ...props }) => <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 'bold', color: '#ffffff', border: '1px solid #e5e7eb', backgroundColor: '#C66E49' }}>{props.children}</th>,
+                                td: ({ node, ...props }) => <td style={{ padding: '12px 16px', border: '1px solid #e5e7eb', color: '#374151', backgroundColor: '#f9fafb' }}>{props.children}</td>,
+                                // 代码块（包括 Mermaid）
+                                pre: ({ children }: any) => {
+                                    const codeElement = children as React.ReactElement<{ className?: string; children?: string }>;
+                                    if (codeElement?.props?.className?.includes('language-mermaid')) {
+                                        const code = String(codeElement.props.children || '').replace(/\n$/, '');
+                                        return <MermaidBlock code={code} />;
+                                    }
+                                    return <CodeBlock>{children}</CodeBlock>;
+                                },
+                                code: ({ node, className, children, ...props }: any) => {
+                                    // 行内代码
+                                    if (!className) {
+                                        return <code style={{ backgroundColor: '#f3f4f6', color: '#c2410c', padding: '2px 6px', borderRadius: '4px', fontSize: '14px', fontFamily: FONT_FAMILY, margin: '0 2px' }}>{children}</code>;
+                                    }
+                                    // 代码块内的 code 标签，保持原样
+                                    return <code className={className} {...props}>{children}</code>;
+                                },
                                 a: ({ node, href, children, ...props }) => {
                                     if (href === '__underline__') return <span style={{ borderBottom: '2px dashed #8DE0B4', paddingBottom: '2px', textDecoration: 'none', color: 'inherit' }}>{children}</span>;
                                     return <a href={href} style={{ color: '#2563eb', textDecoration: 'underline', borderBottom: '1px solid rgba(37, 99, 235, 0.2)' }} target="_blank" rel="noopener noreferrer" {...props}>{children}</a>;
