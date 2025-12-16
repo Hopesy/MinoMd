@@ -43,33 +43,37 @@ export const createMarkdownComponents = (imageMap: ImageMap): Partial<Components
   ),
 
   p: ({ children }) => (
-    <section style={{ marginBottom: '16px', lineHeight: '1.8', fontSize: '16px', color: '#374151', textAlign: 'justify' }}>
+    <section style={{ marginBottom: '16px', lineHeight: '1.8', fontSize: '14px', color: '#374151', textAlign: 'justify' }}>
       {children}
     </section>
   ),
 
   strong: ({ children }) => (
-    <strong style={{ color: '#c2410c', fontWeight: 'bold' }}>{children}</strong>
+    <strong style={{ color: '#c2410c', fontWeight: 'bold', fontSize: '14px' }}>
+      <span style={{ fontWeight: '300' }}>「</span>
+      {children}
+      <span style={{ fontWeight: '300' }}>」</span>
+    </strong>
   ),
 
   ul: ({ children }) => (
-    <ul style={{ paddingLeft: '2em', marginBottom: '16px', listStyleType: 'disc', color: '#374151' }}>
+    <ul style={{ paddingLeft: '2em', marginBottom: '16px', listStyleType: 'disc', color: '#374151', fontSize: '14px' }}>
       {children}
     </ul>
   ),
 
   ol: ({ children }) => (
-    <ol style={{ paddingLeft: '2em', marginBottom: '16px', listStyleType: 'decimal', color: '#374151' }}>
+    <ol style={{ paddingLeft: '2em', marginBottom: '16px', listStyleType: 'decimal', color: '#374151', fontSize: '14px' }}>
       {children}
     </ol>
   ),
 
   li: ({ children }) => (
-    <li style={{ marginBottom: '8px', lineHeight: '1.6' }}>{children}</li>
+    <li style={{ marginBottom: '6px', lineHeight: '1.6', fontSize: '14px' }}>{children}</li>
   ),
 
   blockquote: ({ children }) => (
-    <section style={{ borderLeft: '4px solid #fdba74', backgroundColor: '#fff7ed', padding: '15px', margin: '20px 0', borderRadius: '4px', color: '#666', fontStyle: 'italic' }}>
+    <section style={{ borderLeft: '4px solid #fdba74', backgroundColor: '#fff7ed', padding: '15px', margin: '20px 0', borderRadius: '4px', color: '#666', fontStyle: 'italic', fontSize: '13px' }}>
       {children}
     </section>
   ),
@@ -93,7 +97,7 @@ export const createMarkdownComponents = (imageMap: ImageMap): Partial<Components
   // 表格样式
   table: ({ children }) => (
     <section style={{ margin: '20px 0' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px', border: '1px solid #e5e7eb' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', border: '1px solid #e5e7eb' }}>
         {children}
       </table>
     </section>
@@ -132,7 +136,13 @@ export const createMarkdownComponents = (imageMap: ImageMap): Partial<Components
   code: ({ className, children, ...props }: any) => {
     if (!className) {
       return (
-        <code style={{ backgroundColor: '#f3f4f6', color: '#c2410c', padding: '2px 6px', borderRadius: '4px', fontSize: '14px', fontFamily: FONT_FAMILY, margin: '0 2px' }}>
+        <code style={{
+          backgroundColor: '#f3f4f6',
+          color: '#c2410c',
+          padding: '2px 6px',
+          fontSize: '13px',
+          fontFamily: FONT_FAMILY
+        }}>
           {children}
         </code>
       );

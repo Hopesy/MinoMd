@@ -187,7 +187,7 @@ export const copyForWeChat = async (
     code.style.fontFamily = 'Operator Mono, Consolas, Monaco, Menlo, monospace';
     code.style.fontSize = '12px';
     code.style.setProperty('-webkit-overflow-scrolling', 'touch');
-    code.style.paddingTop = '15px';
+    code.style.paddingTop = '20px';  // 增加首行与代码内容的间距
     code.style.background = '#282c34';
     code.style.borderRadius = '5px';
     code.style.lineHeight = '1.2';
@@ -224,6 +224,19 @@ export const copyForWeChat = async (
 
   // 修复文字对齐问题：将两端对齐改为左对齐
   html = html.replace(/text-align:\s*justify;?/gi, 'text-align: left;');
+
+  // 调整字号：段落、列表、引用块、行内代码、表格等
+  html = html.replace(/(<p[^>]*style="[^"]*?)font-size:\s*16px;?([^"]*")/gi, '$1font-size: 14px;$2');
+  html = html.replace(/(<ul[^>]*style="[^"]*?)font-size:\s*16px;?([^"]*")/gi, '$1font-size: 14px;$2');
+  html = html.replace(/(<ol[^>]*style="[^"]*?)font-size:\s*16px;?([^"]*")/gi, '$1font-size: 14px;$2');
+  html = html.replace(/(<li[^>]*style="[^"]*?)font-size:\s*16px;?([^"]*")/gi, '$1font-size: 14px;$2');
+  html = html.replace(/(<strong[^>]*style="[^"]*?)font-size:\s*16px;?([^"]*")/gi, '$1font-size: 14px;$2');
+  html = html.replace(/(<blockquote[^>]*style="[^"]*?)font-size:\s*16px;?([^"]*")/gi, '$1font-size: 13px;$2');
+  html = html.replace(/(<code[^>]*style="[^"]*?)font-size:\s*14px;?([^"]*")/gi, '$1font-size: 13px;$2');
+  html = html.replace(/(<table[^>]*style="[^"]*?)font-size:\s*14px;?([^"]*")/gi, '$1font-size: 13px;$2');
+
+  // 确保行内代码的装饰符号（⌜⌟）在微信中也显示
+  html = html.replace(/display:\s*inline-flex;?/gi, 'display: inline;');
 
   // rgba 转 hex
   html = html.replace(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)/gi, (_, r, g, b) => {
