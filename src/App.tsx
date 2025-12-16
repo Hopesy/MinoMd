@@ -375,25 +375,118 @@ export default function App() {
         e.target.value = ''; // 重置 input
     };
 
-    const copyForWeChat = () => {
+    const copyForWeChat = async () => {
         const previewElement = document.getElementById('preview-content-wechat');
         if (!previewElement) return;
-        const selection = window.getSelection();
-        const range = document.createRange();
 
-        // 选中整个容器
-        range.selectNodeContents(previewElement);
-
-        selection?.removeAllRanges();
-        selection?.addRange(range);
+        // 获取 HTML 并转换为微信兼容格式
+        let html = previewElement.innerHTML;
+        
+        // 1. 移除 box-shadow
+        html = html.replace(/box-shadow:\s*[^;]+;?/gi, '');
+        
+        // 2. 移除 opacity
+        html = html.replace(/opacity:\s*[^;]+;?/gi, '');
+        
+        // 3. display: flex 转换
+        html = html.replace(/display:\s*flex;?/gi, 'display: block;');
+        
+        // 4. rgba 转换为 hex
+        html = html.replace(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)/gi, (_, r, g, b) => {
+            return '#' + [r, g, b].map(x => parseInt(x).toString(16).padStart(2, '0')).join('');
+        });
+        
+        // 5. 移除 overflow: hidden
+        html = html.replace(/overflow:\s*hidden;?/gi, '');
+        
+        // 6. 移除 text-transform
+        html = html.replace(/text-transform:\s*[^;]+;?/gi, '');
+        
+        // 7. 移除不支持的属性
+        html = html.replace(/user-select:\s*[^;]+;?/gi, '');
+        html = html.replace(/-webkit-user-select:\s*[^;]+;?/gi, '');
+        html = html.replace(/min-width:\s*[^;]+;?/gi, '');
+        html = html.replace(/word-break:\s*[^;]+;?/gi, '');
+        
+        // 8. border-collapse: separate 改为 collapse
+        html = html.replace(/border-collapse:\s*separate;?/gi, 'border-collapse: collapse;');
+        
+        // 9. 移除 border-spacing
+        html = html.replace(/border-spacing:\s*[^;]+;?/gi, '');
+        
+        // 10. 移除 table-layout: fixed
+        html = html.replace(/table-layout:\s*fixed;?/gi, '');
+        
+        // 11. 移除 cursor
+        html = html.replace(/cursor:\s*[^;]+;?/gi, '');
+        
+        // 12. 移除 white-space: nowrap (保留 pre)
+        html = html.replace(/white-space:\s*nowrap;?/gi, '');
+        
+        // 13. 代码块表格：移除边框，设置宽度自适应
+        html = html.replace(/<table([^>]*)>/gi, (match, attrs) => {
+            if (attrs.includes('style="')) {
+                return match.replace(/style="/, 'style="border: none; width: auto; table-layout: auto; ');
+            }
+            return `<table${attrs} style="border: none; width: auto; table-layout: auto;">`;
+        });
+        
+        // 给 tr 添加 border: none
+        html = html.replace(/<tr([^>]*)>/gi, (match, attrs) => {
+            if (attrs.includes('style="')) {
+                return match.replace(/style="/, 'style="border: none; ');
+            }
+            return `<tr${attrs} style="border: none;">`;
+        });
+        
+        // 给 td 添加 border: none，行号列最小宽度，代码列自动宽度
+        html = html.replace(/<td([^>]*)>/gi, (_, attrs) => {
+            let newAttrs = attrs;
+            // 移除固定宽度
+            newAttrs = newAttrs.replace(/width:\s*35px;?/gi, '');
+            newAttrs = newAttrs.replace(/min-width:\s*35px;?/gi, '');
+            // 减少 padding
+            newAttrs = newAttrs.replace(/padding-right:\s*12px/gi, 'padding-right: 8px');
+            newAttrs = newAttrs.replace(/padding-left:\s*12px/gi, 'padding-left: 8px');
+            
+            if (newAttrs.includes('style="')) {
+                return `<td${newAttrs}>`.replace(/style="/, 'style="border: none; ');
+            }
+            return `<td${newAttrs} style="border: none;">`;
+        });
+        
+        // 14. 清理多余的空样式
+        html = html.replace(/style="\s*"/gi, '');
+        html = html.replace(/;\s*;/g, ';');
+        html = html.replace(/:\s*;/g, ': ;');
+        
         try {
-            const successful = document.execCommand('copy');
-            setCopyStatus(successful ? 'success' : 'error');
+            // 使用 Clipboard API 写入 HTML
+            await navigator.clipboard.write([
+                new ClipboardItem({
+                    'text/html': new Blob([html], { type: 'text/html' }),
+                    'text/plain': new Blob([previewElement.innerText], { type: 'text/plain' })
+                })
+            ]);
+            setCopyStatus('success');
         } catch (err) {
-            console.error('Copy failed', err);
-            setCopyStatus('error');
+            // 降级方案：使用传统方式
+            console.error('Clipboard API failed, falling back:', err);
+            const selection = window.getSelection();
+            const range = document.createRange();
+            range.selectNodeContents(previewElement);
+            selection?.removeAllRanges();
+            selection?.addRange(range);
+            try {
+                document.execCommand('copy');
+                setCopyStatus('success');
+            } catch (e) {
+                console.error('Copy failed', e);
+                setCopyStatus('error');
+            }
+            selection?.removeAllRanges();
         }
-        selection?.removeAllRanges();
+        
         setTimeout(() => setCopyStatus('idle'), 2000);
     };
 
