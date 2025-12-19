@@ -12,6 +12,16 @@ export const copyForWeChat = async (
   const previewElement = document.getElementById('preview-content-wechat');
   if (!previewElement) return;
 
+  // ========== 第零步：移除目录（微信不支持交互式跳转） ==========
+  const tocElements = previewElement.querySelectorAll('[data-toc]');
+  const tocReplacements: { toc: Element; parent: Node }[] = [];
+  for (const toc of Array.from(tocElements)) {
+    if (toc.parentNode) {
+      tocReplacements.push({ toc, parent: toc.parentNode });
+      toc.parentNode.removeChild(toc);
+    }
+  }
+
   // ========== 第一步：处理公式和流程图，转成图片 ==========
   const svgReplacements: { svg: Element; img: HTMLImageElement; parent: Node }[] = [];
   const katexReplacements: { katex: Element; img: HTMLImageElement; parent: Node }[] = [];
@@ -252,12 +262,19 @@ export const copyForWeChat = async (
 
   // ========== 第三步：恢复原始 DOM ==========
   const restoreDOM = () => {
+    // 恢复目录
+    for (let i = tocReplacements.length - 1; i >= 0; i--) {
+      const { toc, parent } = tocReplacements[i];
+      parent.appendChild(toc);
+    }
+    // 恢复公式
     for (let i = katexReplacements.length - 1; i >= 0; i--) {
       const { katex, img, parent } = katexReplacements[i];
       if (img.parentNode === parent) {
         parent.replaceChild(katex, img);
       }
     }
+    // 恢复流程图
     for (let i = svgReplacements.length - 1; i >= 0; i--) {
       const { svg, img, parent } = svgReplacements[i];
       if (img.parentNode === parent) {

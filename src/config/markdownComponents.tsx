@@ -8,39 +8,61 @@ import { FONT_FAMILY } from '@/constants';
 import { MermaidBlock } from '@/components/MermaidBlock';
 import { CodeBlock } from '@/components/CodeBlock';
 
+// 全局标题计数器
+let headingCounter = 0;
+
+/**
+ * 重置标题计数器（在每次渲染前调用）
+ */
+export const resetHeadingCounter = () => {
+  headingCounter = 0;
+};
+
 /**
  * 创建 Markdown 组件配置
  */
 export const createMarkdownComponents = (imageMap: ImageMap): Partial<Components> => ({
-  h1: ({ children }) => (
-    <section style={{ textAlign: 'center', marginTop: '40px', marginBottom: '20px' }}>
-      <span style={{ display: 'inline-block', backgroundColor: '#C66E49', color: '#ffffff', padding: '10px 24px', borderRadius: '8px', fontSize: '20px', fontWeight: 'bold', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
-        {children}
-      </span>
-    </section>
-  ),
+  h1: ({ children }) => {
+    const id = `heading-${headingCounter++}`;
+    return (
+      <section id={id} style={{ textAlign: 'center', marginTop: '40px', marginBottom: '20px', scrollMarginTop: '20px' }}>
+        <span style={{ display: 'inline-block', backgroundColor: '#C66E49', color: '#ffffff', padding: '10px 24px', borderRadius: '8px', fontSize: '20px', fontWeight: 'bold', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+          {children}
+        </span>
+      </section>
+    );
+  },
 
-  h2: ({ children }) => (
-    <section style={{ textAlign: 'center', marginTop: '30px', marginBottom: '20px' }}>
-      <span style={{ display: 'inline-block', backgroundColor: '#C66E49', color: '#ffffff', padding: '8px 20px', borderRadius: '6px', fontSize: '17px', fontWeight: 'bold', opacity: 0.9 }}>
-        {children}
-      </span>
-    </section>
-  ),
+  h2: ({ children }) => {
+    const id = `heading-${headingCounter++}`;
+    return (
+      <section id={id} style={{ textAlign: 'center', marginTop: '30px', marginBottom: '20px', scrollMarginTop: '20px' }}>
+        <span style={{ display: 'inline-block', backgroundColor: '#C66E49', color: '#ffffff', padding: '8px 20px', borderRadius: '6px', fontSize: '17px', fontWeight: 'bold', opacity: 0.9 }}>
+          {children}
+        </span>
+      </section>
+    );
+  },
 
-  h3: ({ children }) => (
-    <section style={{ marginTop: '30px', marginBottom: '15px', display: 'flex', alignItems: 'center', borderBottom: '1px dashed #C66E49', paddingBottom: '10px' }}>
-      <span style={{ display: 'inline-block', width: '4px', height: '20px', backgroundColor: '#ea580c', marginRight: '10px', borderRadius: '4px' }} />
-      <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#1f2937' }}>{children}</span>
-    </section>
-  ),
+  h3: ({ children }) => {
+    const id = `heading-${headingCounter++}`;
+    return (
+      <section id={id} style={{ marginTop: '30px', marginBottom: '15px', display: 'flex', alignItems: 'center', borderBottom: '1px dashed #C66E49', paddingBottom: '10px', scrollMarginTop: '20px' }}>
+        <span style={{ display: 'inline-block', width: '4px', height: '20px', backgroundColor: '#ea580c', marginRight: '10px', borderRadius: '4px' }} />
+        <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#1f2937' }}>{children}</span>
+      </section>
+    );
+  },
 
-  h4: ({ children }) => (
-    <section style={{ marginTop: '30px', marginBottom: '15px', display: 'flex', alignItems: 'center', borderBottom: '1px dashed #C66E49', paddingBottom: '10px' }}>
-      <span style={{ display: 'inline-block', width: '4px', height: '20px', backgroundColor: '#ea580c', marginRight: '10px', borderRadius: '4px' }} />
-      <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#1f2937' }}>{children}</span>
-    </section>
-  ),
+  h4: ({ children }) => {
+    const id = `heading-${headingCounter++}`;
+    return (
+      <section id={id} style={{ marginTop: '30px', marginBottom: '15px', display: 'flex', alignItems: 'center', borderBottom: '1px dashed #C66E49', paddingBottom: '10px', scrollMarginTop: '20px' }}>
+        <span style={{ display: 'inline-block', width: '4px', height: '20px', backgroundColor: '#ea580c', marginRight: '10px', borderRadius: '4px' }} />
+        <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#1f2937' }}>{children}</span>
+      </section>
+    );
+  },
 
   p: ({ children }) => (
     <section style={{ marginBottom: '16px', lineHeight: '1.8', fontSize: '14px', color: '#374151', textAlign: 'justify' }}>

@@ -1,0 +1,96 @@
+/**
+ * 目录组件样式
+ */
+
+/* 触发区域 - 窗口右侧边缘的透明区域 */
+.triggerZone {
+  position: fixed;
+  right: 0;
+  top: 0;
+  width: 40px;
+  height: 100vh;
+  z-index: 999;
+}
+
+/* 目录容器 - 悬浮卡片样式 */
+.tocContainer {
+  position: fixed;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%) translateX(300px);
+  width: 180px;
+  max-height: 60vh;
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px;
+  overflow-y: auto;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.15);
+  transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+  opacity: 0;
+}
+
+.tocContainer.visible {
+  transform: translateY(-50%) translateX(0);
+  opacity: 1;
+}
+
+/* 滚动条样式 */
+.tocContainer::-webkit-scrollbar {
+  width: 4px;
+}
+
+.tocContainer::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tocContainer::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 2px;
+}
+
+.tocContainer::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* 在小屏幕上隐藏触发区域和目录 */
+@media (max-width: 768px) {
+  .triggerZone,
+  .tocContainer {
+    display: none;
+  }
+}
+
+.tocTitle {
+  font-size: 14px;
+  font-weight: bold;
+  color: #c66e49;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.tocItem {
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: color 0.2s;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.tocItemLevel1 {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.tocItemOther {
+  font-size: 12px;
+  font-weight: normal;
+  color: #6b7280;
+}
+
+.tocItem:hover {
+  color: #c66e49;
+}
