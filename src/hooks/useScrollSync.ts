@@ -6,9 +6,7 @@ import { useRef } from 'react';
 import { useMarkdown } from '@/contexts/MarkdownContext';
 
 export const useScrollSync = () => {
-  const { syncScroll } = useMarkdown();
-  const editorRef = useRef<HTMLTextAreaElement>(null);
-  const previewRef = useRef<HTMLDivElement>(null);
+  const { syncScroll, editorRef, previewRef } = useMarkdown();
   const isScrolling = useRef<string | null>(null);
 
   const handleScroll = (source: string) => {
