@@ -4,20 +4,31 @@
  */
 
 import { MarkdownProvider, HistoryProvider, ImageProvider } from '@/contexts';
+import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { Header, Toolbar, Editor, Preview } from '@/components';
 import { useKeyboardShortcuts } from '@/hooks';
 
 function AppContent() {
   // 注册键盘快捷键
   useKeyboardShortcuts();
+  const { theme } = useTheme();
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50 text-gray-800 font-sans">
+    <div
+      className="flex flex-col h-screen font-sans transition-colors"
+      style={{
+        backgroundColor: theme === 'dark' ? '#24273a' : '#f8f9fa',
+        color: theme === 'dark' ? '#cad3f5' : '#1f2937'
+      }}
+    >
       <Header />
       <Toolbar />
       <main className="flex-1 flex overflow-hidden">
         <Editor />
-        <div className="w-px bg-gray-200 hidden md:block" />
+        <div 
+          className="w-px hidden md:block" 
+          style={{ backgroundColor: theme === 'dark' ? '#494d64' : '#e5e7eb' }}
+        />
         <Preview />
       </main>
     </div>
@@ -26,12 +37,14 @@ function AppContent() {
 
 export default function App() {
   return (
-    <MarkdownProvider>
-      <HistoryProvider>
-        <ImageProvider>
-          <AppContent />
-        </ImageProvider>
-      </HistoryProvider>
-    </MarkdownProvider>
+    <ThemeProvider>
+      <MarkdownProvider>
+        <HistoryProvider>
+          <ImageProvider>
+            <AppContent />
+          </ImageProvider>
+        </HistoryProvider>
+      </MarkdownProvider>
+    </ThemeProvider>
   );
 }

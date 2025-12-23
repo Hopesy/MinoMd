@@ -9,6 +9,7 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import { useImage } from '@/contexts/ImageContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { processMarkdown } from '@/utils/markdown';
 import { createMarkdownComponents, resetHeadingCounter } from '@/config';
 import { extractHeadings } from '@/utils/extractHeadings';
@@ -20,6 +21,7 @@ interface MarkdownRendererProps {
 
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ markdown }) => {
   const { imageMap } = useImage();
+  const { theme } = useTheme();
   const processedMarkdown = processMarkdown(markdown);
 
   // 提取标题生成目录
@@ -29,6 +31,9 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ markdown }) 
   useEffect(() => {
     resetHeadingCounter();
   }, [markdown]);
+
+  // 根据主题创建组件配置
+  const components = useMemo(() => createMarkdownComponents(imageMap, theme === 'dark'), [imageMap, theme]);
 
   return (
     <div id="preview-content-wechat" className="relative z-10 max-w-3xl mx-auto p-8 md:p-12 min-h-full" style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
@@ -40,7 +45,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ markdown }) 
         urlTransform={(value) => value}
         remarkPlugins={[remarkGfm, remarkMath]}
         rehypePlugins={[rehypeKatex]}
-        components={createMarkdownComponents(imageMap)}
+        components={components}
       >
         {processedMarkdown}
       </ReactMarkdown>

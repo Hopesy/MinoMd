@@ -26,7 +26,7 @@ export const TableOfContents: React.FC<TableOfContentsProps> = ({ headings }) =>
 
   return (
     <>
-      {/* 触发区域 - 右侧边缘的透明区域 */}
+      {/* 触发区域 - 右侧中间的小区域 */}
       <div
         className={styles.triggerZone}
         onMouseEnter={() => setIsVisible(true)}
@@ -36,7 +36,6 @@ export const TableOfContents: React.FC<TableOfContentsProps> = ({ headings }) =>
       <div
         data-toc
         className={`${styles.tocContainer} ${isVisible ? styles.visible : ''}`}
-        onMouseEnter={() => setIsVisible(true)}
         onMouseLeave={() => setIsVisible(false)}
       >
         <div className={styles.tocTitle}>

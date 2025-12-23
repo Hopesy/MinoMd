@@ -2,6 +2,40 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  /* 浅色主题变量 */
+  --color-base: #ffffff;
+  --color-mantle: #f8f9fa;
+  --color-surface0: #f3f4f6;
+  --color-surface1: #e5e7eb;
+  --color-surface2: #d1d5db;
+  --color-text: #1f2937;
+  --color-subtext1: #374151;
+  --color-subtext0: #4b5563;
+  --color-overlay2: #6b7280;
+  --color-overlay1: #9ca3af;
+  --color-accent: #ea580c;
+  --color-accent-light: #fff7ed;
+  --color-accent-border: #fdba74;
+}
+
+.dark {
+  /* 暗色主题变量 (Catppuccin Macchiato) */
+  --color-base: #24273a;
+  --color-mantle: #1e2030;
+  --color-surface0: #363a4f;
+  --color-surface1: #494d64;
+  --color-surface2: #5b6078;
+  --color-text: #cad3f5;
+  --color-subtext1: #b8c0e0;
+  --color-subtext0: #a5adcb;
+  --color-overlay2: #939ab7;
+  --color-overlay1: #8087a2;
+  --color-accent: #f5a97f;
+  --color-accent-light: rgba(245, 169, 127, 0.1);
+  --color-accent-border: #f5a97f;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -11,6 +45,8 @@
 body {
   margin: 0;
   font-family: system-ui, -apple-system, sans-serif;
+  background-color: var(--color-base);
+  color: var(--color-text);
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -20,4 +56,48 @@ body {
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* 全局滚动条样式 - 浅色模式 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f3f4f6;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* 全局滚动条样式 - 暗色模式 */
+.dark ::-webkit-scrollbar-track {
+  background: #1e2030;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #494d64;
+  border-radius: 4px;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #5b6078;
+}
+
+/* 暗色模式下的选中文字颜色 */
+.dark ::selection {
+  background-color: rgba(245, 169, 127, 0.3);
+  color: #cad3f5;
+}
+
+/* 暗色模式下的输入框占位符 */
+.dark ::placeholder {
+  color: #6e738d;
 }
