@@ -5,6 +5,7 @@
 import React, { createContext, useContext, useState, useRef, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import { DEFAULT_MARKDOWN } from '@/constants';
+import { useMarkdown } from './MarkdownContext';
 
 interface HistoryContextType {
   history: string[];
@@ -24,6 +25,7 @@ export const HistoryProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [history, setHistory] = useState([DEFAULT_MARKDOWN]);
   const [historyIndex, setHistoryIndex] = useState(0);
   const historyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { setMarkdown } = useMarkdown();
 
   // 防抖保存到历史记录
   const saveToHistory = useCallback((newContent: string) => {
@@ -54,16 +56,18 @@ export const HistoryProvider: React.FC<{ children: ReactNode }> = ({ children })
     if (historyIndex > 0) {
       const newIndex = historyIndex - 1;
       setHistoryIndex(newIndex);
+      setMarkdown(history[newIndex]); // 同步更新 markdown 内容
     }
-  }, [historyIndex]);
+  }, [historyIndex, history, setMarkdown]);
 
   // 重做
   const redo = useCallback(() => {
     if (historyIndex < history.length - 1) {
       const newIndex = historyIndex + 1;
       setHistoryIndex(newIndex);
+      setMarkdown(history[newIndex]); // 同步更新 markdown 内容
     }
-  }, [history.length, historyIndex]);
+  }, [history, historyIndex, setMarkdown]);
 
   // 更新当前内容（占位函数）
   const updateContent = useCallback((_content: string) => {
