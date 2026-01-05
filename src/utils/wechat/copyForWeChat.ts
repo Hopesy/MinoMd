@@ -66,9 +66,9 @@ function convertCodeBlockToMdnice(section: Element): string | null {
           } else {
             // 有颜色的字符包在 span 里
             if (hljsClass) {
-              lineContent += `<span class="${hljsClass}" style="color: ${color}${fontStyle === 'italic' ? '; font-style: italic' : ''}; line-height: 26px">${char}</span>`;
+              lineContent += `<span class="${hljsClass}" style="color: ${color}${fontStyle === 'italic' ? '; font-style: italic' : ''}">${char}</span>`;
             } else if (color && color !== '#abb2bf' && color !== 'rgb(171, 178, 191)') {
-              lineContent += `<span style="color: ${color}${fontStyle === 'italic' ? '; font-style: italic' : ''}; line-height: 26px">${char}</span>`;
+              lineContent += `<span style="color: ${color}${fontStyle === 'italic' ? '; font-style: italic' : ''}">${char}</span>`;
             } else {
               lineContent += char;
             }

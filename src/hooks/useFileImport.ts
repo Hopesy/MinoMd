@@ -22,7 +22,8 @@ export const useFileImport = () => {
     const reader = new FileReader();
     reader.onload = (e) => {
       if (e.target?.result) {
-        const content = e.target.result as string;
+        // 统一换行符：将 \r\n 和 \r 转换为 \n，避免微信导出时出现多余空行
+        const content = (e.target.result as string).replace(/\r\n/g, '\n').replace(/\r/g, '\n');
         setMarkdown(content);
         saveHistoryImmediate(content);
       }
