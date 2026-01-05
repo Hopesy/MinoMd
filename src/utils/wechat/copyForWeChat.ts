@@ -6,284 +6,214 @@ import type { CopyStatus } from '@/types';
 import { svgToBase64Image } from './svgToImage';
 import { formulaToBase64 } from './formulaToImage';
 
+/**
+ * 将代码块转换为 mdnice 兼容的 HTML 格式
+ * 完全按照参考格式生成，确保微信保存时不丢失空格
+ */
+function convertCodeBlockToMdnice(section: Element): string | null {
+  // 查找代码块的外层 table
+  const outerTable = section.querySelector('table');
+  if (!outerTable) return null;
+
+  // 查找包含代码的 div 和内部 table
+  const scrollDiv = section.querySelector('div');
+  const innerTable = scrollDiv?.querySelector('table');
+  if (!innerTable) return null;
+
+  // 提取所有代码行
+  const rows = innerTable.querySelectorAll('tr');
+  const codeLines: string[] = [];
+
+  for (const row of Array.from(rows)) {
+    const tds = row.querySelectorAll('td');
+    if (tds.length >= 2) {
+      const codeCell = tds[1] as HTMLElement;
+      const spans = codeCell.querySelectorAll('span');
+      let lineContent = '';
+
+      for (const span of Array.from(spans)) {
+        const spanEl = span as HTMLElement;
+        const color = spanEl.style.color;
+        const fontStyle = spanEl.style.fontStyle;
+        const text = spanEl.textContent || '';
+
+        if (!text) continue;
+
+        // 根据颜色确定 hljs class
+        let hljsClass = '';
+        const colorLower = color?.toLowerCase() || '';
+        if (colorLower.includes('198') || colorLower === '#c678dd') {
+          hljsClass = 'hljs-keyword';
+        } else if (colorLower.includes('97') || colorLower === '#61aeee') {
+          hljsClass = 'hljs-title';
+        } else if (colorLower.includes('152') || colorLower === '#98c379') {
+          hljsClass = 'hljs-string';
+        } else if (colorLower.includes('92') || colorLower === '#5c6370') {
+          hljsClass = 'hljs-comment';
+        }
+
+        // 逐字符处理，空格转 &nbsp;
+        for (let i = 0; i < text.length; i++) {
+          const char = text[i];
+          if (char === ' ') {
+            lineContent += '&nbsp;';
+          } else if (char === '<') {
+            lineContent += '&lt;';
+          } else if (char === '>') {
+            lineContent += '&gt;';
+          } else if (char === '&') {
+            lineContent += '&amp;';
+          } else {
+            // 有颜色的字符包在 span 里
+            if (hljsClass) {
+              lineContent += `<span class="${hljsClass}" style="color: ${color}${fontStyle === 'italic' ? '; font-style: italic' : ''}; line-height: 26px">${char}</span>`;
+            } else if (color && color !== '#abb2bf' && color !== 'rgb(171, 178, 191)') {
+              lineContent += `<span style="color: ${color}${fontStyle === 'italic' ? '; font-style: italic' : ''}; line-height: 26px">${char}</span>`;
+            } else {
+              lineContent += char;
+            }
+          }
+        }
+      }
+
+      codeLines.push(lineContent || '&nbsp;');
+    }
+  }
+
+  // 合并相邻的相同样式 span（优化输出）
+  let codeContent = codeLines.join('<br>');
+  // 合并相邻相同 span: </span><span class="X" style="Y">  -> 直接连接内容
+  codeContent = codeContent.replace(/<\/span><span class="([^"]*)" style="([^"]*)">/g, (match, cls, style, offset, str) => {
+    // 检查前一个 span 的 class 和 style 是否相同
+    const prevMatch = str.substring(0, offset).match(/<span class="([^"]*)" style="([^"]*)">[^<]*$/);
+    if (prevMatch && prevMatch[1] === cls && prevMatch[2] === style) {
+      return ''; // 合并
+    }
+    return match;
+  });
+
+  // 生成完全符合 mdnice 格式的 HTML
+  return `<pre class="custom" data-tool="mdnice编辑器" style="border-radius: 5px; box-shadow: rgba(0, 0, 0, 0.55) 0px 2px 10px; text-align: left; margin-top: 10px; margin-bottom: 10px; margin-left: 0px; margin-right: 0px; padding-top: 0px; padding-bottom: 0px; padding-left: 0px; padding-right: 0px;"><span style="display: block; background: url(https://files.mdnice.com/user/3441/876cad08-0422-409d-bb5a-08afec5da8ee.svg); height: 30px; width: 100%; background-size: 40px; background-repeat: no-repeat; background-color: #282c34; margin-bottom: -7px; border-radius: 5px; background-position: 10px 10px;"></span><code class="hljs" style="overflow-x: auto; padding: 16px; color: #abb2bf; padding-top: 15px; background: #282c34; border-radius: 5px; display: -webkit-box; font-family: Consolas, Monaco, Menlo, monospace; font-size: 12px;">${codeContent}</code></pre>`;
+}
+
 export const copyForWeChat = async (
   setCopyStatus: (status: CopyStatus) => void
 ): Promise<void> => {
   const previewElement = document.getElementById('preview-content-wechat');
   if (!previewElement) return;
 
-  // ========== 第零步：移除目录（微信不支持交互式跳转） ==========
-  const tocElements = previewElement.querySelectorAll('[data-toc]');
-  const tocReplacements: { toc: Element; parent: Node }[] = [];
+  // 克隆 DOM，避免修改原始内容
+  const clonedElement = previewElement.cloneNode(true) as HTMLElement;
+
+  // ========== 第一步：移除目录 ==========
+  const tocElements = clonedElement.querySelectorAll('[data-toc]');
   for (const toc of Array.from(tocElements)) {
-    if (toc.parentNode) {
-      tocReplacements.push({ toc, parent: toc.parentNode });
-      toc.parentNode.removeChild(toc);
-    }
+    toc.parentNode?.removeChild(toc);
   }
 
-  // ========== 第一步：处理公式和流程图，转成图片 ==========
-  const svgReplacements: { svg: Element; img: HTMLImageElement; parent: Node }[] = [];
-  const katexReplacements: { katex: Element; img: HTMLImageElement; parent: Node }[] = [];
-
-  // 1. Mermaid 流程图 SVG 转图片
-  const mermaidContainers = previewElement.querySelectorAll('[data-mermaid]');
+  // ========== 第二步：处理公式和流程图，转成图片 ==========
+  // Mermaid 流程图
+  const mermaidContainers = clonedElement.querySelectorAll('[data-mermaid]');
   for (const container of Array.from(mermaidContainers)) {
-    const svg = container.querySelector('svg');
-    if (svg) {
-      const result = await svgToBase64Image(svg as SVGElement);
-      if (result.base64 && svg.parentNode) {
+    const originalSvg = previewElement.querySelector(`[data-mermaid] svg`);
+    if (originalSvg) {
+      const result = await svgToBase64Image(originalSvg as SVGElement);
+      if (result.base64) {
         const img = document.createElement('img');
         img.src = result.base64;
-        img.style.width = `${result.width}px`;
-        img.style.height = `${result.height}px`;
-        img.style.maxWidth = '100%';
-        img.style.display = 'block';
-        img.style.margin = '0 auto';
-        svgReplacements.push({ svg, img, parent: svg.parentNode });
-        svg.parentNode.replaceChild(img, svg);
+        img.style.cssText = `width: ${result.width}px; height: ${result.height}px; max-width: 100%; display: block; margin: 0 auto;`;
+        container.innerHTML = '';
+        container.appendChild(img);
       }
     }
   }
 
-  // 2. 块级公式转图片
-  const katexDisplays = previewElement.querySelectorAll('.katex-display');
-  for (const display of Array.from(katexDisplays)) {
-    const el = display as HTMLElement;
-    const result = await formulaToBase64(el, true);
-    if (result.base64 && display.parentNode) {
-      const img = document.createElement('img');
-      img.src = result.base64;
-      img.style.width = `${result.width}px`;
-      img.style.height = `${result.height}px`;
-      img.style.maxWidth = '100%';
-      img.style.display = 'block';
-      img.style.margin = '16px auto';
-      katexReplacements.push({ katex: display, img, parent: display.parentNode });
-      display.parentNode.replaceChild(img, display);
+  // 块级公式
+  const katexDisplays = clonedElement.querySelectorAll('.katex-display');
+  for (let i = 0; i < katexDisplays.length; i++) {
+    const display = katexDisplays[i];
+    const originalDisplay = previewElement.querySelectorAll('.katex-display')[i];
+    if (originalDisplay) {
+      const result = await formulaToBase64(originalDisplay as HTMLElement, true);
+      if (result.base64 && display.parentNode) {
+        const img = document.createElement('img');
+        img.src = result.base64;
+        img.style.cssText = `width: ${result.width}px; height: ${result.height}px; max-width: 100%; display: block; margin: 16px auto;`;
+        display.parentNode.replaceChild(img, display);
+      }
     }
   }
 
-  // 3. 行内公式转图片
-  const inlineKatex = previewElement.querySelectorAll('.katex:not(.katex-display .katex)');
-  for (const katex of Array.from(inlineKatex)) {
-    if (!katex.parentNode) continue;
-    const el = katex as HTMLElement;
-    const result = await formulaToBase64(el, false);
-    if (result.base64 && katex.parentNode) {
-      const img = document.createElement('img');
-      img.src = result.base64;
-      img.style.display = 'inline';
-      img.style.verticalAlign = 'middle';
-      img.style.width = `${result.width}px`;
-      img.style.height = `${result.height}px`;
-      katexReplacements.push({ katex, img, parent: katex.parentNode });
-      katex.parentNode.replaceChild(img, katex);
+  // 行内公式
+  const inlineKatex = clonedElement.querySelectorAll('.katex:not(.katex-display .katex)');
+  for (let i = 0; i < inlineKatex.length; i++) {
+    const katex = inlineKatex[i];
+    const originalKatex = previewElement.querySelectorAll('.katex:not(.katex-display .katex)')[i];
+    if (originalKatex && katex.parentNode) {
+      const result = await formulaToBase64(originalKatex as HTMLElement, false);
+      if (result.base64) {
+        const img = document.createElement('img');
+        img.src = result.base64;
+        img.style.cssText = `display: inline; vertical-align: middle; width: ${result.width}px; height: ${result.height}px;`;
+        katex.parentNode.replaceChild(img, katex);
+      }
     }
   }
 
-  // ========== 第1.5步：DOM 层面转换代码块结构（参考微信兼容格式） ==========
-  // 将 table 结构的代码块转换为 <pre><code> 结构，参考 mdnice 编辑器格式
-  const sections = previewElement.querySelectorAll('section');
+  // ========== 第三步：获取 HTML ==========
+  let html = clonedElement.innerHTML;
+
+  // ========== 第四步：替换代码块为 mdnice 格式 ==========
+  // 找到所有代码块 section 并替换
+  const sections = clonedElement.querySelectorAll('section');
   for (const section of Array.from(sections)) {
-    // 查找代码块的外层 table
-    const outerTable = section.querySelector('table');
-    if (!outerTable) continue;
-
-    // 获取语言标签
-    const languageSpan = section.querySelector('td[align="center"] span');
-    const language = languageSpan ? languageSpan.textContent?.trim() || 'TEXT' : 'TEXT';
-
-    // 查找包含代码的 div 和内部 table
-    const scrollDiv = section.querySelector('div');
-    const innerTable = scrollDiv?.querySelector('table');
-    if (!innerTable) continue;
-
-    // 提取所有代码行
-    const rows = innerTable.querySelectorAll('tr');
-    const codeLines: string[] = [];
-
-    for (const row of Array.from(rows)) {
-      const tds = row.querySelectorAll('td');
-      if (tds.length >= 2) {
-        // 第二个 td 是代码内容
-        const codeCell = tds[1] as HTMLElement;
-        // 保留代码内容和样式，正确处理HTML实体和空格
-        let lineContent = '';
-        const spans = codeCell.querySelectorAll('span');
-        for (const span of Array.from(spans)) {
-          const spanEl = span as HTMLElement;
-          const color = spanEl.style.color;
-          const fontStyle = spanEl.style.fontStyle;
-          // 使用innerHTML保留空格和特殊字符
-          const text = spanEl.innerHTML || '';
-
-          if (color && color !== '#abb2bf') {
-            // 保留语法高亮颜色
-            lineContent += `<span style="color: ${color}; ${fontStyle ? 'font-style: ' + fontStyle + ';' : ''}">${text}</span>`;
-          } else {
-            lineContent += text;
-          }
-        }
-        codeLines.push(lineContent || '&nbsp;');  // 空行用&nbsp;占位
-      }
+    const mdniceHtml = convertCodeBlockToMdnice(section);
+    if (mdniceHtml) {
+      // 在 html 字符串中替换这个 section
+      const sectionHtml = section.outerHTML;
+      html = html.replace(sectionHtml, mdniceHtml);
     }
-
-    // 创建新的 <pre><code> 结构
-    const pre = document.createElement('pre');
-    pre.style.marginTop = '10px';
-    pre.style.marginBottom = '10px';
-    pre.style.borderRadius = '5px';
-    pre.style.boxShadow = 'rgba(0, 0, 0, 0.55) 0px 2px 10px';
-
-    // 创建标题栏 span（包含三个圆圈和语言标签）
-    const headerSpan = document.createElement('span');
-    headerSpan.style.display = 'block';
-    headerSpan.style.height = '30px';
-    headerSpan.style.width = '100%';
-    headerSpan.style.backgroundColor = '#282c34';
-    headerSpan.style.marginBottom = '-7px';
-    headerSpan.style.borderRadius = '5px';
-    headerSpan.style.padding = '8px 12px';
-    headerSpan.style.fontSize = '12px';
-    headerSpan.style.lineHeight = '30px';
-
-    // 添加三个圆圈（红、黄、绿）
-    const redCircle = document.createElement('span');
-    redCircle.style.display = 'inline-block';
-    redCircle.style.width = '12px';
-    redCircle.style.height = '12px';
-    redCircle.style.borderRadius = '50%';
-    redCircle.style.backgroundColor = '#ff5f56';
-    redCircle.style.marginRight = '8px';
-    redCircle.style.verticalAlign = 'middle';
-
-    const yellowCircle = document.createElement('span');
-    yellowCircle.style.display = 'inline-block';
-    yellowCircle.style.width = '12px';
-    yellowCircle.style.height = '12px';
-    yellowCircle.style.borderRadius = '50%';
-    yellowCircle.style.backgroundColor = '#ffbd2e';
-    yellowCircle.style.marginRight = '8px';
-    yellowCircle.style.verticalAlign = 'middle';
-
-    const greenCircle = document.createElement('span');
-    greenCircle.style.display = 'inline-block';
-    greenCircle.style.width = '12px';
-    greenCircle.style.height = '12px';
-    greenCircle.style.borderRadius = '50%';
-    greenCircle.style.backgroundColor = '#27c93f';
-    greenCircle.style.marginRight = '8px';
-    greenCircle.style.verticalAlign = 'middle';
-
-    // 添加语言标签
-    const langSpan = document.createElement('span');
-    langSpan.style.color = '#6b7280';
-    langSpan.style.fontWeight = 'bold';
-    langSpan.style.verticalAlign = 'middle';
-    langSpan.textContent = language;
-
-    headerSpan.appendChild(redCircle);
-    headerSpan.appendChild(yellowCircle);
-    headerSpan.appendChild(greenCircle);
-    headerSpan.appendChild(langSpan);
-
-    // 创建 code 元素（关键：使用 display: -webkit-box）
-    const code = document.createElement('code');
-    code.style.overflowX = 'auto';
-    code.style.padding = '16px';
-    code.style.color = '#abb2bf';
-    code.style.display = '-webkit-box';  // 关键属性！
-    code.style.fontFamily = 'Operator Mono, Consolas, Monaco, Menlo, monospace';
-    code.style.fontSize = '12px';
-    code.style.setProperty('-webkit-overflow-scrolling', 'touch');
-    code.style.paddingTop = '20px';  // 增加首行与代码内容的间距
-    code.style.background = '#282c34';
-    code.style.borderRadius = '5px';
-    code.style.lineHeight = '1.2';
-    code.style.whiteSpace = 'nowrap';  // 确保不换行
-
-    // 将代码行用 <br> 连接
-    code.innerHTML = codeLines.join('<br>');
-
-    // 组装新结构
-    pre.appendChild(headerSpan);
-    pre.appendChild(code);
-
-    // 替换原来的 section 内容
-    section.innerHTML = '';
-    section.style.marginTop = '20px';
-    section.style.marginBottom = '20px';
-    section.appendChild(pre);
   }
 
-  // ========== 第二步：获取 HTML 并处理微信兼容性 ==========
-  let html = previewElement.innerHTML;
+  // ========== 第五步：处理微信兼容性 ==========
+  // 确保 &nbsp; 实体形式
+  html = html.replace(/\u00A0/g, '&nbsp;');
 
   // 移除微信不支持的 CSS 属性
-  html = html.replace(/box-shadow:\s*[^;]+;?/gi, '');  // 移除所有阴影（包括H1、H2、图片）
+  html = html.replace(/box-shadow:\s*[^;]+;?/gi, '');
   html = html.replace(/opacity:\s*[^;]+;?/gi, '');
   html = html.replace(/text-transform:\s*[^;]+;?/gi, '');
   html = html.replace(/user-select:\s*[^;]+;?/gi, '');
   html = html.replace(/-webkit-user-select:\s*[^;]+;?/gi, '');
   html = html.replace(/cursor:\s*[^;]+;?/gi, '');
 
-  // 移除图片的边框和阴影（img标签）
-  html = html.replace(/(<img[^>]*style="[^"]*?)border:\s*1px solid #f0f0f0;?([^"]*")/gi, '$1$2');
+  // 移除图片边框
   html = html.replace(/(<img[^>]*style="[^"]*?)border:\s*[^;]+;?([^"]*")/gi, '$1$2');
 
-  // 修复文字对齐问题：将两端对齐改为左对齐
+  // 文字对齐
   html = html.replace(/text-align:\s*justify;?/gi, 'text-align: left;');
 
-  // 调整字号：段落、列表、引用块、行内代码、表格等
+  // 调整字号
   html = html.replace(/(<p[^>]*style="[^"]*?)font-size:\s*16px;?([^"]*")/gi, '$1font-size: 14px;$2');
   html = html.replace(/(<ul[^>]*style="[^"]*?)font-size:\s*16px;?([^"]*")/gi, '$1font-size: 14px;$2');
   html = html.replace(/(<ol[^>]*style="[^"]*?)font-size:\s*16px;?([^"]*")/gi, '$1font-size: 14px;$2');
   html = html.replace(/(<li[^>]*style="[^"]*?)font-size:\s*16px;?([^"]*")/gi, '$1font-size: 14px;$2');
-  html = html.replace(/(<strong[^>]*style="[^"]*?)font-size:\s*16px;?([^"]*")/gi, '$1font-size: 14px;$2');
   html = html.replace(/(<blockquote[^>]*style="[^"]*?)font-size:\s*16px;?([^"]*")/gi, '$1font-size: 13px;$2');
-  html = html.replace(/(<code[^>]*style="[^"]*?)font-size:\s*14px;?([^"]*")/gi, '$1font-size: 13px;$2');
-  html = html.replace(/(<table[^>]*style="[^"]*?)font-size:\s*14px;?([^"]*")/gi, '$1font-size: 13px;$2');
-
-  // 确保行内代码的装饰符号（⌜⌟）在微信中也显示
-  html = html.replace(/display:\s*inline-flex;?/gi, 'display: inline;');
 
   // rgba 转 hex
   html = html.replace(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)/gi, (_, r, g, b) => {
     return '#' + [r, g, b].map(x => parseInt(x).toString(16).padStart(2, '0')).join('');
   });
 
-  // display: flex 转 display: block
+  // display: flex 转 block
   html = html.replace(/display:\s*flex;?/gi, 'display: block;');
+  html = html.replace(/display:\s*inline-flex;?/gi, 'display: inline;');
 
-  // 清理空 style
+  // 清理
   html = html.replace(/style="\s*"/gi, '');
   html = html.replace(/;\s*;/g, ';');
 
-  // ========== 第三步：恢复原始 DOM ==========
-  const restoreDOM = () => {
-    // 恢复目录
-    for (let i = tocReplacements.length - 1; i >= 0; i--) {
-      const { toc, parent } = tocReplacements[i];
-      parent.appendChild(toc);
-    }
-    // 恢复公式
-    for (let i = katexReplacements.length - 1; i >= 0; i--) {
-      const { katex, img, parent } = katexReplacements[i];
-      if (img.parentNode === parent) {
-        parent.replaceChild(katex, img);
-      }
-    }
-    // 恢复流程图
-    for (let i = svgReplacements.length - 1; i >= 0; i--) {
-      const { svg, img, parent } = svgReplacements[i];
-      if (img.parentNode === parent) {
-        parent.replaceChild(svg, img);
-      }
-    }
-  };
-
-  // ========== 第四步：复制到剪贴板 ==========
+  // ========== 第六步：复制到剪贴板 ==========
   try {
     await navigator.clipboard.write([
       new ClipboardItem({
@@ -293,23 +223,20 @@ export const copyForWeChat = async (
     ]);
     setCopyStatus('success');
   } catch (err) {
-    console.error('Clipboard API failed, falling back:', err);
-    const selection = window.getSelection();
-    const range = document.createRange();
-    range.selectNodeContents(previewElement);
-    selection?.removeAllRanges();
-    selection?.addRange(range);
+    console.error('Clipboard API failed:', err);
+    // fallback
+    const textarea = document.createElement('textarea');
+    textarea.value = previewElement.innerText;
+    document.body.appendChild(textarea);
+    textarea.select();
     try {
       document.execCommand('copy');
       setCopyStatus('success');
     } catch (e) {
-      console.error('Copy failed', e);
       setCopyStatus('error');
     }
-    selection?.removeAllRanges();
+    document.body.removeChild(textarea);
   }
-
-  restoreDOM();
 
   setTimeout(() => setCopyStatus('idle'), 2000);
 };
