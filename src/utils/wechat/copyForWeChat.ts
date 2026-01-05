@@ -179,6 +179,24 @@ export const copyForWeChat = async (
   // 确保 &nbsp; 实体形式
   html = html.replace(/\u00A0/g, '&nbsp;');
 
+  // 修复列表项换行问题：将 li 内的多个块级元素合并成一个 section
+  // 匹配 <li...>...</li> 并重构内部结构
+  html = html.replace(/<li([^>]*)>([\s\S]*?)<\/li>/gi, (_match, attrs, content) => {
+    // 移除内部的 p 和 section 标签，只保留内容
+    let innerContent = content
+      .replace(/<p[^>]*>/gi, '')
+      .replace(/<\/p>/gi, '')
+      .replace(/<section[^>]*>/gi, '')
+      .replace(/<\/section>/gi, '')
+      .trim();
+    
+    // 用 mdnice 格式的 section 包裹
+    return `<li${attrs}><section style="margin-top: 5px; margin-bottom: 5px; color: #010101; font-size: 14px; line-height: 1.8em; text-align: left; font-weight: normal;">${innerContent}</section></li>`;
+  });
+
+  // 修复 strong 标签的颜色（保持原来的橙色）
+  html = html.replace(/<strong[^>]*>/gi, '<strong style="color: #C2410C; font-weight: bold; display: inline;">');
+
   // 移除微信不支持的 CSS 属性
   html = html.replace(/box-shadow:\s*[^;]+;?/gi, '');
   html = html.replace(/opacity:\s*[^;]+;?/gi, '');
